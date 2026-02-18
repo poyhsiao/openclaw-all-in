@@ -1,0 +1,15 @@
+FROM coollabsio/openclaw:latest
+
+# 安裝 QMD CLI + 中文依賴
+USER root
+RUN bun install -g qmd \
+    && apt-get update && apt-get install -y curl jq \
+    && rm -rf /var/lib/apt/lists/*
+
+# 預載 QMD skill
+COPY --chown=node:node searxng-skill/ /root/.openclaw/skills/searxng-local/
+COPY --chown=node:node qmd-skill/ /root/.openclaw/skills/qmd/
+
+USER node
+WORKDIR /root
+
