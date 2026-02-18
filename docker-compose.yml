@@ -1,68 +1,37 @@
 version: '3.9'
 
+# ============================================================
+# OpenClaw AI Platform - Docker Compose Configuration
+# ============================================================
+# 所有配置參數可透過 .env 檔案自定義
+# 複製 .env.example 為 .env 並修改配置
+# ============================================================
+
 services:
-  searxng:
-    image: searxng/searxng:latest
-    container_name: openclaw_searxng
-    ports:
-      - "8080:8080"
-    volumes:
-      - searxng-settings.yml:/etc/searxng/settings.yml:ro
-    environment:
-      - SEARXNG_BASE_URL=http://localhost:8080/
-      - SEARXNG_REDIS_URL=redis://redis:6379/0
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
-      interval: 30s
-      timeout: 10s
-
-  ollama:
-    image: ollama/ollama:latest
-    container_name: openclaw_ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    restart: unless-stopped
-    healthcheck:
-      test: ollama list
-
-  redis:
-    image: redis:alpine
-    container_name: openclaw_redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    command: redis-server --appendonly yes --maxmemory 512mb
-    restart: unless-stopped
-
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: openclaw_qdrant
-    ports:
-      - "6333:6333"
-    volumes:
-      - qdrant_data:/qdrant/storage
-    restart: unless-stopped
-
+  # ============================================================
+  # Core Services (Profile: core)
+  # ============================================================
+  
+  # OpenClaw Gateway - AI Agent 主要入口
   openclaw:
-    build: .
+    build:
+      context: .
+      dockerfile: dockerfile.openclaw
     container_name: openclaw_gateway
     ports:
-      - "3000:3000"    # Dashboard
-      - "5000:5000"    # API
+      - "${OPENCLAW_PORT:-18789}:18789"
     volumes:
-      - openclaw_data:/root/.openclaw
+      - ${OPENCLAW_DATA_PATH:-./data/openclaw}:/root/.openclaw
       - /var/run/docker.sock:/var/run/docker.sock:ro
     environment:
-      - NODE_ENV=production
+      - NODE_ENV=${NODE_ENV:-production}
       - OPENCLAW_MODE=gateway
     depends_on:
       searxng:
         condition: service_healthy
       ollama:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     restart: unless-stopped
     cap_drop:
@@ -70,23 +39,299 @@ services:
     security_opt:
       - no-new-privileges:true
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:18789/health"]
       interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - core
 
+  # SearxNG - 隱私友善的元搜尋引擎
+  searxng:
+    image: searxng/searxng:latest
+    container_name: openclaw_searxng
+    ports:
+      - "${SEARXNG_PORT:-8080}:8080"
+    volumes:
+      - ./searxng-settings.yml:/etc/searxng/settings.yml:ro
+      - ${SEARXNG_DATA_PATH:-./data/searxng}:/etc/searxng/data
+    environment:
+      - SEARXNG_BASE_URL=http://localhost:${SEARXNG_PORT:-8080}/
+      - SEARXNG_REDIS_URL=redis://redis:6379/0
+      - SEARXNG_SECRET=${SEARXNG_SECRET_KEY:-change-me-in-production}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - core
+
+  # Ollama - 本地 AI 模型推理服務
+  ollama:
+    image: ollama/ollama:latest
+    container_name: openclaw_ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    volumes:
+      - ${OLLAMA_MODELS_PATH:-./data/ollama}:/root/.ollama
+    environment:
+      - OLLAMA_ORIGINS=*
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "ollama list || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    # GPU 支援（可選）- 取消註釋以啟用
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+    networks:
+      - openclaw-network
+    profiles:
+      - core
+
+  # Redis - 快取、Session、訊息佇列
+  redis:
+    image: redis:7-alpine
+    container_name: openclaw_redis
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    volumes:
+      - ${REDIS_DATA_PATH:-./data/redis}:/data
+    command: >
+      redis-server 
+      --appendonly yes 
+      --maxmemory 512mb 
+      --maxmemory-policy allkeys-lru
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - openclaw-network
+    profiles:
+      - core
+
+  # ============================================================
+  # Monitoring Services (Profile: core)
+  # ============================================================
+  
+  # Portainer - Docker 容器管理界面
   portainer:
     image: portainer/portainer-ce:latest
     container_name: openclaw_portainer
     ports:
-      - "9000:9000"
+      - "${PORTAINER_PORT:-9000}:9000"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock:ro
-      - portainer_data:/data
+      - ${PORTAINER_DATA_PATH:-./data/portainer}:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/api/status"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - core
 
+  # ============================================================
+  # Control Panel Services (Profile: ui)
+  # ============================================================
+  
+  # Control Panel Frontend - React Web UI
+  control-panel:
+    build:
+      context: ./control-panel
+      dockerfile: Dockerfile
+    container_name: openclaw_control_panel
+    ports:
+      - "${CONTROL_PANEL_PORT:-4000}:4000"
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - VITE_API_URL=http://api-server:${API_SERVER_PORT:-5000}
+      - VITE_OPENCLAW_URL=ws://openclaw:${OPENCLAW_PORT:-18789}
+    depends_on:
+      api-server:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - ui
+
+  # API Server - 控制面板後端 API
+  api-server:
+    build:
+      context: ./api-server
+      dockerfile: Dockerfile
+    container_name: openclaw_api_server
+    ports:
+      - "${API_SERVER_PORT:-5000}:5000"
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    environment:
+      - NODE_ENV=${NODE_ENV:-production}
+      - DATABASE_URL=file:/app/data/openclaw.db
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - JWT_EXPIRES_IN=${JWT_EXPIRES_IN:-7d}
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@example.com}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-change-me-in-production}
+      - API_RATE_LIMIT=${API_RATE_LIMIT:-100}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:4000}
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - ui
+
+  # ============================================================
+  # Voice Services (Profile: voice)
+  # ============================================================
+  
+  # Whisper.cpp - 語音識別（輸入）
+  whisper:
+    image: ghcr.io/ggerganov/whisper.cpp:latest
+    container_name: openclaw_whisper
+    ports:
+      - "${WHISPER_PORT:-8081}:8080"
+    volumes:
+      - ./configs/whisper:/app/models
+    environment:
+      - WHISPER_MODEL=${WHISPER_MODEL:-base}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - voice
+
+  # Edge-TTS - 語音合成（輸出）
+  edge-tts:
+    image: openclaw/edge-tts:latest
+    container_name: openclaw_edge_tts
+    ports:
+      - "${EDGE_TTS_PORT:-5050}:5050"
+    environment:
+      - DEFAULT_VOICE=${EDGE_TTS_DEFAULT_VOICE:-zh-TW-HsiaoChenNeural}
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5050/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - voice
+
+  # ============================================================
+  # Agent Communication (Profile: agent)
+  # ============================================================
+  
+  # NATS - Agent 訊息佇列和通訊
+  nats:
+    image: nats:2-alpine
+    container_name: openclaw_nats
+    ports:
+      - "${NATS_PORT:-4222}:4222"
+      - "${NATS_MONITOR_PORT:-8222}:8222"
+    volumes:
+      - ${NATS_DATA_PATH:-./data/nats}:/data
+    command: >
+      --http_port 8222
+      --store_dir /data
+      --cluster_name openclaw-cluster
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8222/varz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - openclaw-network
+    profiles:
+      - agent
+
+  # ============================================================
+  # Optional Services (可選服務)
+  # ============================================================
+  
+  # Open WebUI - 可選的 Web UI（與 Control Panel 二選一）
+  open-webui:
+    image: ghcr.io/open-webui/open-webui:main
+    container_name: openclaw_webui
+    ports:
+      - "3001:8080"
+    volumes:
+      - open-webui_data:/app/backend/data
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - WEBUI_SECRET_KEY=${JWT_SECRET:-change-me-in-production}
+    depends_on:
+      - ollama
+    restart: unless-stopped
+    networks:
+      - openclaw-network
+    profiles:
+      - webui
+
+# ============================================================
+# Networks
+# ============================================================
+networks:
+  openclaw-network:
+    name: ${DOCKER_NETWORK:-openclaw-network}
+    driver: bridge
+
+# ============================================================
+# Volumes
+# ============================================================
 volumes:
   ollama_data:
+    name: openclaw_ollama_data
   redis_data:
-  qdrant_data:
+    name: openclaw_redis_data
   openclaw_data:
+    name: openclaw_gateway_data
   portainer_data:
-
+    name: openclaw_portainer_data
+  open-webui_data:
+    name: openclaw_webui_data
