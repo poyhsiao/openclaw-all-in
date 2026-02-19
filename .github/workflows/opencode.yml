@@ -1,0 +1,43 @@
+name: opencode
+
+on:
+  issue_comment:
+    types: [created]
+  pull_request_review_comment:
+    types: [created]
+
+jobs:
+  opencode:
+    if: |
+      (startsWith(github.event.comment.body, '/oc ') ||
+      github.event.comment.body == '/oc' ||
+      contains(github.event.comment.body, ' /oc ') ||
+      endsWith(github.event.comment.body, ' /oc') ||
+      startsWith(github.event.comment.body, '/opencode ') ||
+      github.event.comment.body == '/opencode' ||
+      contains(github.event.comment.body, ' /opencode ') ||
+      endsWith(github.event.comment.body, ' /opencode')) &&
+      (github.event.comment.author_association == 'MEMBER' ||
+      github.event.comment.author_association == 'OWNER' ||
+      github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write
+      contents: write
+      pull-requests: write
+      issues: write
+      statuses: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # Pinned to v1.0.0 for reproducible and secure CI runs
+      # Update version when needed: https://github.com/anomalyco/opencode/releases
+      - name: Run opencode
+        uses: anomalyco/opencode/github@v1
+        env:
+          ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
+        with:
+          model: zhipuai-coding-plan/glm-5
