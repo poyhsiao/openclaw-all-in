@@ -1,0 +1,111 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// User model with enhanced fields and relations
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  name         String?
+  passwordHash String?
+  role         String    @default("user") // user, admin
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  // Relations
+  sessions    Session[]
+  apiKeys     ApiKey[]
+  auditLogs   Audit[]
+
+  @@index([email])
+  @@map("users")
+}
+
+// Session model for authentication sessions
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("sessions")
+}
+
+// ApiKey model for API key management
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String
+  name       String
+  keyHash    String    @unique
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime  @default(now())
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
+// Audit model for audit logs
+model Audit {
+  id        String   @id @default(cuid())
+  userId    String?
+  action    String
+  details   String?  // JSON string for additional details
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audits")
+}
+
+// Model model for LLM model configurations
+model Model {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  provider    String   // ollama, openai, anthropic, etc.
+  modelId     String   // e.g., "llama3.2:3b", "gpt-4"
+  description String?
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([provider])
+  @@index([enabled])
+  @@map("models")
+}
+
+// EnvVar model for environment variables
+model EnvVar {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   // Encrypted in production
+  isSecret  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([key])
+  @@map("env_vars")
+}
