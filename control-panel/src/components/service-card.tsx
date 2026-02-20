@@ -37,7 +37,7 @@ export function ServiceCard({
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {port && (
+          {port !== undefined && port !== null && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground">Port</span>
               <span className="font-mono">{port}</span>
@@ -61,7 +61,7 @@ export function ServiceCard({
                 Start
               </Button>
             )}
-            <Button variant="ghost" size="sm" onClick={onSettings}>
+            <Button variant="ghost" size="sm" onClick={onSettings} aria-label="Open settings">
               <Settings className="h-4 w-4" />
             </Button>
           </div>

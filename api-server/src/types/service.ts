@@ -5,13 +5,25 @@ import type Docker from 'dockerode';
  */
 export enum ServiceStatus {
   RUNNING = 'running',
-  STOPPED = 'stopped',
   PAUSED = 'paused',
   RESTARTING = 'restarting',
   DEAD = 'dead',
   CREATED = 'created',
   EXITED = 'exited',
   REMOVING = 'removing',
+}
+
+/**
+ * Map Docker state to user-friendly label
+ */
+export function mapContainerStateToLabel(containerState: ServiceStatus | string): string {
+  switch (containerState) {
+    case ServiceStatus.EXITED:
+    case 'exited':
+      return 'stopped';
+    default:
+      return containerState;
+  }
 }
 
 /**

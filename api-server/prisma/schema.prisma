@@ -7,6 +7,7 @@ generator client {
 
 datasource db {
   provider = "sqlite"
+  url      = env("DATABASE_URL")
 }
 
 // User model with enhanced fields and relations
@@ -101,7 +102,7 @@ model Model {
 model EnvVar {
   id        String   @id @default(cuid())
   key       String   @unique
-  value     String   // Encrypted in production
+  value     String   // ⚠️ Application-layer encryption/decryption required. Encrypt before create/update, decrypt after read.
   isSecret  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

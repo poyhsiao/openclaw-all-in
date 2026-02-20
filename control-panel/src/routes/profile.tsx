@@ -11,6 +11,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { User, Mail, Lock, Save } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import { useEffect } from 'react';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters'),
@@ -53,6 +54,16 @@ export function Profile() {
       confirmPassword: '',
     },
   });
+
+  // Populate form with profile data when loaded
+  useEffect(() => {
+    if (profile) {
+      profileForm.reset({
+        name: profile.name || '',
+        email: profile.email || '',
+      });
+    }
+  }, [profile, profileForm]);
 
   if (isLoading) {
     return (
@@ -117,11 +128,7 @@ export function Profile() {
             <Avatar className="h-32 w-32">
               <AvatarImage src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.email}`} />
               <AvatarFallback className="text-3xl">
-                {profile?.name
-                  .split(' ')
-                  .map((n) => n[0])
-                  .join('')
-                  .toUpperCase()}
+                {(profile?.name ?? '').split(' ').map(n => n[0] || '').join('').toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="text-center">

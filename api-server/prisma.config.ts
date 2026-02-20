@@ -1,10 +1,12 @@
-import type { PrismaConfig } from '@prisma/client'
+import { config } from './src/config/unifiedConfig';
+import { fileURLToPath } from 'node:url';
 
-const config: PrismaConfig = {
-  schema: './prisma/schema.prisma',
+// Prisma configuration with environment-driven datasource URL
+const prismaConfig = {
+  schema: fileURLToPath(new URL('./prisma/schema.prisma', import.meta.url)),
   datasource: {
-    url: 'file:./data/dev.db',
+    url: config.database.url,
   },
-}
+};
 
-export default config
+export default prismaConfig;

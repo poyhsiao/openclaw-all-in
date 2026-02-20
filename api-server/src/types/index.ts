@@ -14,7 +14,7 @@ export enum UserRole {
 export interface JWTPayload {
   userId: string;
   email: string;
-  role: string;
+  role: UserRole;
   iat: number;
   exp: number;
 }
@@ -58,7 +58,7 @@ export interface AuthResponse {
     id: string;
     email: string;
     name: string | null;
-    role: string;
+    role: UserRole;
   };
   accessToken: string;
   refreshToken: string;
@@ -70,5 +70,5 @@ export interface AuthResponse {
 export interface UpdateUserRequestBody {
   name?: string;
   email?: string;
-  role?: string;
+  role?: UserRole;
 }

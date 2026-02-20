@@ -97,6 +97,7 @@ export function Users() {
   };
 
   const totalPages = usersData ? Math.ceil(usersData.total / 10) : 1;
+  const pageActive = usersData?.users.filter((u) => u.status === 'active').length || 0;
 
   return (
     <div className="p-6 space-y-6">
@@ -121,7 +122,7 @@ export function Users() {
                   <CardTitle>Users</CardTitle>
                   <CardDescription>
                     {usersData?.total || 0} total users,{' '}
-                    {usersData?.users.filter((u) => u.status === 'active').length || 0} active
+                    {pageActive} active on this page
                   </CardDescription>
                 </div>
                 <Button onClick={() => setAddDialogOpen(true)}>
@@ -248,10 +249,15 @@ export function Users() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={handleDeleteUser}
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                handleDeleteUser()
+              }}
+              disabled={deleteUser.isPending}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
-              Delete
+              {deleteUser.isPending ? 'Deleting...' : 'Delete'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

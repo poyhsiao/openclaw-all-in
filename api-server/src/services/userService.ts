@@ -7,6 +7,8 @@ import { UserRole } from '@/types';
  * Contains business logic for user management
  */
 export class UserService {
+  private readonly MAX_LIMIT = 100;
+
   constructor(private readonly userRepository: UserRepository) {}
 
   /**
@@ -27,19 +29,25 @@ export class UserService {
    * List all users with pagination
    */
   async listUsers(page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
+    const validatedPage = Math.max(1, Math.floor(page || 1));
+    const validatedLimit = Math.min(
+      Math.max(1, Math.floor(limit || 10)),
+      this.MAX_LIMIT
+    );
+    const skip = (validatedPage - 1) * validatedLimit;
+
     const [users, total] = await Promise.all([
-      this.userRepository.findAll({ skip, take: limit }),
+      this.userRepository.findAll({ skip, take: validatedLimit }),
       this.userRepository.count(),
     ]);
 
     return {
       users,
       pagination: {
-        page,
-        limit,
+        page: validatedPage,
+        limit: validatedLimit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: total === 0 ? 0 : Math.ceil(total / validatedLimit),
       },
     };
   }
@@ -53,6 +61,12 @@ export class UserService {
     name?: string;
     role?: UserRole;
   }) {
+    // Check for existing email
+    const existingUser = await this.userRepository.findByEmail(data.email);
+    if (existingUser) {
+      throw new Error('Email already exists');
+    }
+
     const passwordHash = await hashPassword(data.password);
 
     return this.userRepository.create({
@@ -112,7 +126,7 @@ export class UserService {
    * Change user password
    */
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
-    const user = await this.userRepository.findByEmail(userId);
+    const user = await this.userRepository.findById(userId);
     if (!user || !user.passwordHash) {
       throw new Error('User not found');
     }

@@ -1,4 +1,4 @@
-import { Outlet, Link } from '@tanstack/react-router'
+import { Outlet, Link, useRouter } from '@tanstack/react-router'
 import { Menu, X, LayoutDashboard, Settings, Users, Server, LogOut, User, Bell } from 'lucide-react'
 import { useAppStore } from '@/stores/app-store'
 import { Button } from '@/components/ui/button'
@@ -14,6 +14,22 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 
 export function Layout() {
   const { sidebarOpen, toggleSidebar } = useAppStore()
+  const router = useRouter()
+
+  const handleProfile = () => {
+    router.navigate({ to: '/profile' })
+  }
+
+  const handleSettings = () => {
+    router.navigate({ to: '/settings' })
+  }
+
+  const handleLogout = () => {
+    // TODO: Implement logout logic
+    // - Clear auth tokens
+    // - Call logout API if needed
+    router.navigate({ to: '/login' })
+  }
 
   const navigation = [
     { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -34,6 +50,7 @@ export function Layout() {
       )}
 
       <aside
+        id="sidebar"
         className={`fixed inset-y-0 left-0 z-50 w-64 bg-card border-r transition-transform duration-300 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
@@ -50,6 +67,7 @@ export function Layout() {
               type="button"
               onClick={toggleSidebar}
               className="lg:hidden p-2 rounded-md hover:bg-accent"
+              aria-label="Close sidebar"
             >
               <X className="h-5 w-5" />
             </button>
@@ -85,8 +103,8 @@ export function Layout() {
       </aside>
 
       <div
-        className={`flex flex-1 flex-col transition-all duration-300 ease-in-out ${
-          sidebarOpen ? 'lg:ml-64' : 'ml-0'
+        className={`flex flex-1 flex-col lg:ml-64 transition-all duration-300 ease-in-out ${
+          sidebarOpen ? '' : 'ml-0'
         }`}
       >
         <header className="flex h-16 items-center justify-between border-b bg-background px-6">
@@ -95,6 +113,9 @@ export function Layout() {
               type="button"
               onClick={toggleSidebar}
               className="p-2 rounded-md hover:bg-accent"
+              aria-label="Toggle sidebar"
+              aria-expanded={sidebarOpen}
+              aria-controls="sidebar"
             >
               <Menu className="h-5 w-5" />
             </button>
@@ -106,6 +127,7 @@ export function Layout() {
             <Button variant="ghost" size="icon" className="relative">
               <Bell className="h-5 w-5" />
               <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-destructive" />
+              <span className="sr-only">You have unread notifications</span>
             </Button>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -126,16 +148,16 @@ export function Layout() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleProfile}>
                   <User className="mr-2 h-4 w-4" />
                   <span>Profile</span>
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleSettings}>
                   <Settings className="mr-2 h-4 w-4" />
                   <span>Settings</span>
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={handleLogout}>
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Log out</span>
                 </DropdownMenuItem>

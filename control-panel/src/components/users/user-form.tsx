@@ -21,13 +21,18 @@ import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { UserFormData } from '@/services/user-hooks';
 
-const userFormSchema = z.object({
+const baseUserFormSchema = z.object({
   email: z.string().email('Invalid email address'),
   name: z.string().min(2, 'Name must be at least 2 characters'),
   password: z.string().min(8, 'Password must be at least 8 characters').optional().or(z.literal('')),
   role: z.enum(['admin', 'user']),
   status: z.enum(['active', 'inactive']),
 });
+
+const createUserFormSchema = baseUserFormSchema.refine(
+  (data) => data.password && data.password.length > 0,
+  { message: 'Password is required when creating a user', path: ['password'] }
+);
 
 interface UserFormProps {
   defaultValues?: Partial<UserFormData>;
@@ -37,8 +42,8 @@ interface UserFormProps {
 }
 
 export function UserForm({ defaultValues, onSubmit, isSubmitting, isEdit }: UserFormProps) {
-  const form = useForm<z.infer<typeof userFormSchema>>({
-    resolver: zodResolver(userFormSchema),
+  const form = useForm<z.infer<typeof baseUserFormSchema>>({
+    resolver: zodResolver(isEdit ? baseUserFormSchema : createUserFormSchema),
     defaultValues: {
       email: '',
       name: '',
@@ -49,7 +54,7 @@ export function UserForm({ defaultValues, onSubmit, isSubmitting, isEdit }: User
     },
   });
 
-  const handleSubmit = (data: z.infer<typeof userFormSchema>) => {
+  const handleSubmit = (data: z.infer<typeof baseUserFormSchema>) => {
     const submitData: UserFormData = {
       email: data.email,
       name: data.name,

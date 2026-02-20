@@ -54,11 +54,12 @@ async function fetchAPI<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`
+  const finalHeaders: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options?.headers,
+  }
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers: finalHeaders,
     ...options,
   })
 
@@ -69,7 +70,17 @@ async function fetchAPI<T>(
     throw new Error(error.message || 'API request failed')
   }
 
-  return response.json()
+  // Handle empty responses (e.g., 204 No Content)
+  if (response.status === 204 || response.headers.get('Content-Length') === '0') {
+    return null as T
+  }
+
+  const text = await response.text()
+  if (!text) {
+    return null as T
+  }
+
+  return JSON.parse(text)
 }
 
 export function useUsers(page: number = 1, pageSize: number = 10, search?: string) {

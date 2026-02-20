@@ -36,7 +36,6 @@ coverage/
 
 # Prisma
 prisma/*.db
-prisma/migrations/*_*
 
 # Cache
 .cache/

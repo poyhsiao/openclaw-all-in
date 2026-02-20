@@ -5,6 +5,8 @@ import { AuditRepository } from '@/repositories/AuditRepository';
  * Contains business logic for audit logging
  */
 export class AuditService {
+  private readonly MAX_LIMIT = 100;
+
   constructor(private readonly auditRepository: AuditRepository) {}
 
   /**
@@ -31,20 +33,26 @@ export class AuditService {
   /**
    * Get audit logs for a specific user
    */
-  async getUserAuditLogs(userId: string, page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
+  async getUserAuditLogs(userId: string, page?: number, limit?: number) {
+    const validatedPage = Math.max(1, Math.floor(page || 1));
+    const validatedLimit = Math.min(
+      Math.max(1, Math.floor(limit || 10)),
+      this.MAX_LIMIT
+    );
+    const skip = (validatedPage - 1) * validatedLimit;
+
     const [logs, total] = await Promise.all([
-      this.auditRepository.findByUserId(userId, { skip, take: limit }),
+      this.auditRepository.findByUserId(userId, { skip, take: validatedLimit }),
       this.auditRepository.count({ userId }),
     ]);
 
     return {
       logs,
       pagination: {
-        page,
-        limit,
+        page: validatedPage,
+        limit: validatedLimit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: total === 0 ? 0 : Math.ceil(total / validatedLimit),
       },
     };
   }
@@ -58,14 +66,17 @@ export class AuditService {
     userId?: string;
     action?: string;
   }) {
-    const page = options?.page || 1;
-    const limit = options?.limit || 10;
-    const skip = (page - 1) * limit;
+    const validatedPage = Math.max(1, Math.floor(options?.page ?? 1));
+    const validatedLimit = Math.min(
+      Math.max(1, Math.floor(options?.limit ?? 10)),
+      this.MAX_LIMIT
+    );
+    const skip = (validatedPage - 1) * validatedLimit;
 
     const [logs, total] = await Promise.all([
       this.auditRepository.findAll({
         skip,
-        take: limit,
+        take: validatedLimit,
         userId: options?.userId,
         action: options?.action,
       }),
@@ -78,10 +89,10 @@ export class AuditService {
     return {
       logs,
       pagination: {
-        page,
-        limit,
+        page: validatedPage,
+        limit: validatedLimit,
         total,
-        totalPages: Math.ceil(total / limit),
+        totalPages: total === 0 ? 0 : Math.ceil(total / validatedLimit),
       },
     };
   }

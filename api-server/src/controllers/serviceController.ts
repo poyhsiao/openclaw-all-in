@@ -121,12 +121,30 @@ export class ServiceController extends BaseController {
       const { name } = req.params;
       const serviceName = Array.isArray(name) ? name[0] : name;
 
+      // Safely parse numeric parameters
+      let tail: number | undefined;
+      if (req.query.tail) {
+        const parsed = parseInt(req.query.tail as string, 10);
+        tail = Number.isNaN(parsed) ? undefined : parsed;
+      }
+
+      let since: number | undefined;
+      if (req.query.since) {
+        const parsed = parseInt(req.query.since as string, 10);
+        since = Number.isNaN(parsed) ? undefined : parsed;
+      }
+
+      // Default to stdout logs if neither stdout nor stderr specified
+      const hasStdout = req.query.stdout !== undefined;
+      const hasStderr = req.query.stderr !== undefined;
+      const defaultStdout = !hasStdout && !hasStderr;
+
       const options: ContainerLogsOptions = {
-        stdout: req.query.stdout === 'true',
+        stdout: defaultStdout || req.query.stdout === 'true',
         stderr: req.query.stderr === 'true',
         timestamps: req.query.timestamps === 'true',
-        tail: req.query.tail ? parseInt(req.query.tail as string, 10) : undefined,
-        since: req.query.since ? parseInt(req.query.since as string, 10) : undefined,
+        tail,
+        since,
       };
 
       const logs = await dockerService.getContainerLogs(serviceName, options);

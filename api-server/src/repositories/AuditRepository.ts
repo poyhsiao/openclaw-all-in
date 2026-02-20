@@ -4,6 +4,9 @@ import { prisma } from '@/lib/prisma';
  * Audit repository
  * Encapsulates all Prisma audit log queries
  */
+const DEFAULT_TAKE = 50;
+const MAX_TAKE = 500;
+
 export class AuditRepository {
   /**
    * Create audit log entry
@@ -50,6 +53,12 @@ export class AuditRepository {
     userId?: string;
     action?: string;
   }) {
+    // Enforce sensible default and maximum limits
+    const take = Math.min(
+      options?.take ?? DEFAULT_TAKE,
+      MAX_TAKE
+    );
+
     return prisma.audit.findMany({
       where: {
         ...(options?.userId && { userId: options.userId }),
@@ -57,7 +66,7 @@ export class AuditRepository {
       },
       orderBy: { createdAt: 'desc' },
       ...(options?.skip !== undefined && { skip: options.skip }),
-      ...(options?.take !== undefined && { take: options.take }),
+      take,
     });
   }
 

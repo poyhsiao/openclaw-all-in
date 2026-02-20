@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { prisma } from '@/lib/prisma';
+import { encrypt, decrypt } from '@/utils/encryption';
 
 const SALT_ROUNDS = 12;
 
@@ -82,14 +83,14 @@ export class ConfigService {
   /**
    * List all API keys (masked)
    */
-  async listApiKeys() {
+  async listApiKeys(includeUserEmail = false) {
     const keys = await prisma.apiKey.findMany({
       include: {
         user: {
           select: {
             id: true,
-            email: true,
             name: true,
+            ...(includeUserEmail && { email: true }),
           },
         },
       },
@@ -211,7 +212,10 @@ export class ConfigService {
 
     return envVars.map((envVar) => ({
       ...envVar,
-      value: envVar.isSecret ? this.maskSecret(envVar.value) : envVar.value,
+      // Decrypt and then mask value if it's a secret
+      value: envVar.isSecret
+        ? this.maskSecret(decrypt(envVar.value))
+        : envVar.value,
     }));
   }
 
@@ -229,7 +233,10 @@ export class ConfigService {
 
     return {
       ...envVar,
-      value: envVar.isSecret ? this.maskSecret(envVar.value) : envVar.value,
+      // Decrypt and then mask value if it's a secret
+      value: envVar.isSecret
+        ? this.maskSecret(decrypt(envVar.value))
+        : envVar.value,
     };
   }
 
@@ -241,11 +248,15 @@ export class ConfigService {
     value: string;
     isSecret?: boolean;
   }) {
+    // Encrypt secret values before storing
+    const isSecret = data.isSecret ?? true;
+    const valueToStore = isSecret ? encrypt(data.value) : data.value;
+
     return prisma.envVar.create({
       data: {
         key: data.key,
-        value: data.value,
-        isSecret: data.isSecret ?? true,
+        value: valueToStore,
+        isSecret,
       },
     });
   }
@@ -261,9 +272,31 @@ export class ConfigService {
       isSecret?: boolean;
     }
   ) {
+    // If updating value and isSecret not provided, derive from existing record
+    const updateData: any = {};
+    if (data.key !== undefined) updateData.key = data.key;
+
+    if (data.value !== undefined) {
+      // When isSecret is not provided, fetch existing record to determine encryption
+      let shouldEncrypt = data.isSecret;
+
+      if (data.isSecret === undefined) {
+        const existingVar = await prisma.envVar.findUnique({
+          where: { id },
+          select: { isSecret: true },
+        });
+        shouldEncrypt = existingVar?.isSecret ?? true;
+      }
+
+      updateData.value = shouldEncrypt ? encrypt(data.value) : data.value;
+    }
+
+    // Only update isSecret when explicitly provided
+    if (data.isSecret !== undefined) updateData.isSecret = data.isSecret;
+
     return prisma.envVar.update({
       where: { id },
-      data,
+      data: updateData,
     });
   }
 
@@ -303,7 +336,10 @@ export class ConfigService {
     if (value.length <= 8) {
       return '••••••••';
     }
-    return `${value.substring(0, 4)}${'•'.repeat(value.length - 8)}${value.substring(value.length - 4)}`;
+    const visibleTotal = 4;
+    const prefix = Math.ceil(visibleTotal / 2);
+    const suffix = Math.floor(visibleTotal / 2);
+    return `${value.substring(0, prefix)}${'•'.repeat(value.length - (prefix + suffix))}${value.substring(value.length - suffix)}`;
   }
 }
 
