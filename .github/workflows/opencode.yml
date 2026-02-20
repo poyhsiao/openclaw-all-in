@@ -31,13 +31,14 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v6
         with:
+          fetch-depth: 1
           persist-credentials: false
 
       # Pinned to v1.0.0 for reproducible and secure CI runs
       # Update version when needed: https://github.com/anomalyco/opencode/releases
       - name: Run opencode
-        uses: anomalyco/opencode/github@v1
+        uses: anomalyco/opencode/github@latest
         env:
-          ZHIPU_API_KEY: ${{ secrets.ZHIPU_API_KEY }}
+          NIM_API_KEY: ${{ secrets.NIM_API_KEY }}
         with:
-          model: zhipuai-coding-plan/glm-5
+          model: nvidia/z-ai/glm5
