@@ -39,6 +39,6 @@ jobs:
       - name: Run opencode
         uses: anomalyco/opencode/github@latest
         env:
-          NIM_API_KEY: ${{ secrets.NIM_API_KEY }}
+          NVIDIA_API_KEY: ${{ secrets.NVIDIA_API_KEY }}
         with:
           model: nvidia/z-ai/glm5
