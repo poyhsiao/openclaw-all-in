@@ -48,7 +48,22 @@ export const useAuthStore = create<AuthState>()(
     }),
     {
       name: 'auth-storage',
-      storage: createJSONStorage(() => localStorage),
+      storage: createJSONStorage(() => sessionStorage),
+      partialize: (state) =>
+        // Only persist user metadata, not the actual token or auth state
+        ({
+          user: state.user,
+          isAuthenticated: undefined,
+          token: undefined // Never persist the token
+        }),
+      onRehydrateStorage: () => (state) => {
+        // Reset authenticated state on rehydrate since we don't persist token
+        if (state) {
+          state isAuthenticated = false
+          state.token = null
+          state.user = null
+        }
+      },
     }
   )
 )

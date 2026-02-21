@@ -85,14 +85,21 @@ export const api = {
 async function fetchAPI<T>(
   endpoint: string,
   options?: RequestInit
-): Promise<T> {
+): Promise<T | null> {
   const url = `${API_BASE}${endpoint}`
+
+  // Use Headers API instead of index assignment on HeadersInit
+  const headers = new Headers(options?.headers)
+  headers.set('Content-Type', 'application/json')
+
+  const token = localStorage.getItem('auth_token')
+  if (token) {
+    headers.set('Authorization', `Bearer ${token}`)
+  }
+
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
     ...options,
+    headers,
   })
 
   if (!response.ok) {
@@ -102,7 +109,22 @@ async function fetchAPI<T>(
     throw new Error(error.message || 'API request failed')
   }
 
-  return response.json()
+  // Handle empty responses (e.g., 204 No Content)
+  if (response.status === 204 || response.headers.get('Content-Length') === '0') {
+    return null
+  }
+
+  const text = await response.text()
+  if (!text) {
+    return null
+  }
+
+  try {
+    return JSON.parse(text)
+  } catch (error) {
+    console.error('Failed to parse JSON response:', error)
+    throw new Error('Invalid JSON response from server')
+  }
 }
 
 // Query Options Factories (v5 pattern)
@@ -180,6 +202,7 @@ export function useAuthMutation() {
       })
     },
     onSuccess: (data) => {
+      if (!data) return
       localStorage.setItem('auth_token', data.token)
       queryClient.setQueryData(['auth', 'user'], data.user)
     },
@@ -193,6 +216,7 @@ export function useAuthMutation() {
       })
     },
     onSuccess: (data) => {
+      if (!data) return
       localStorage.setItem('auth_token', data.token)
       queryClient.setQueryData(['auth', 'user'], data.user)
     },
@@ -206,6 +230,8 @@ export function useAuthMutation() {
     },
     onSuccess: () => {
       localStorage.removeItem('auth_token')
+      queryClient.removeQueries()
+      queryClient.clear()
       queryClient.setQueryData(['auth', 'user'], null)
     },
   })
