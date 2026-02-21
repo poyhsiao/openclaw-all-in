@@ -14,7 +14,8 @@ export async function comparePassword(password: string, hash: string): Promise<b
 }
 
 export function generateToken(user: { id: string; email: string; role: string }): string {
-  const payload: JWTPayload = {
+  const payload = {
+    type: 'access' as const,
     userId: user.id,
     email: user.email,
     role: user.role,
@@ -27,6 +28,7 @@ export function generateToken(user: { id: string; email: string; role: string })
 
 export function generateRefreshToken(userId: string): string {
   const payload = {
+    type: 'refresh' as const,
     userId,
     iat: Math.floor(Date.now() / 1000),
     exp: Math.floor(Date.now() / 1000) + (60 * 60 * 24 * 7), // 7 days
@@ -37,7 +39,13 @@ export function generateRefreshToken(userId: string): string {
 
 export function verifyToken(token: string): JWTPayload {
   try {
-    return jwt.verify(token, config.auth.jwtSecret) as JWTPayload;
+    const decoded = jwt.verify(token, config.auth.jwtSecret) as JWTPayload & { type?: string };
+
+    if (decoded.type !== 'access') {
+      throw new Error('Invalid token type');
+    }
+
+    return decoded;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       throw new Error('Token expired');
@@ -51,7 +59,13 @@ export function verifyToken(token: string): JWTPayload {
 
 export function verifyRefreshToken(token: string): { userId: string } {
   try {
-    return jwt.verify(token, config.auth.jwtSecret) as { userId: string };
+    const decoded = jwt.verify(token, config.auth.jwtSecret) as { userId: string; type?: string };
+
+    if (decoded.type !== 'refresh') {
+      throw new Error('Invalid token type');
+    }
+
+    return decoded;
   } catch (error) {
     if (error instanceof jwt.TokenExpiredError) {
       throw new Error('Refresh token expired');
