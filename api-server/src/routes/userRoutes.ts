@@ -91,6 +91,20 @@ class UserController extends BaseController {
     const { id } = req.params;
     const userId = Array.isArray(id) ? id[0] : id;
 
+    // Prevent users from deleting their own account
+    if (req.user?.userId === userId) {
+      await this.auditService.logAction({
+        userId: req.user?.userId,
+        action: 'SELF_DELETION_ATTEMPT',
+        details: { targetUserId: userId },
+        ipAddress: req.ip,
+        userAgent: req.get('user-agent'),
+      });
+
+      this.handleValidationError(res, 'Cannot delete your own account');
+      return;
+    }
+
     await this.userService.deleteUser(userId);
 
     await this.auditService.logAction({
@@ -196,6 +210,18 @@ router.post(
 );
 
 router.get(
+  '/me',
+  authenticate,
+  asyncErrorWrapper((req, res) => userController.getMe(req, res))
+);
+
+router.put(
+  '/me',
+  authenticate,
+  asyncErrorWrapper((req, res) => userController.updateMe(req, res))
+);
+
+router.get(
   '/:id',
   authenticate,
   asyncErrorWrapper((req, res) => userController.getUser(req, res))
@@ -213,18 +239,6 @@ router.delete(
   authenticate,
   requireRole(UserRole.ADMIN),
   asyncErrorWrapper((req, res) => userController.deleteUser(req, res))
-);
-
-router.get(
-  '/me',
-  authenticate,
-  asyncErrorWrapper((req, res) => userController.getMe(req, res))
-);
-
-router.put(
-  '/me',
-  authenticate,
-  asyncErrorWrapper((req, res) => userController.updateMe(req, res))
 );
 
 router.put(
