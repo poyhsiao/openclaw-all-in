@@ -13,8 +13,14 @@ export const errorHandler = (
   err: ApiError,
   _req: Request,
   res: Response,
-  _next: NextFunction
+  next: NextFunction
 ): void => {
+  // Prevent sending response if headers are already sent
+  if (res.headersSent) {
+    // Delegate to Express's default error handler
+    return next(err);
+  }
+
   const statusCode = err.statusCode || 500;
   const message = err.message || 'Internal Server Error';
 

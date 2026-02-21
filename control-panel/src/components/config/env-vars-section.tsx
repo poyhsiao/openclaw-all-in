@@ -35,9 +35,14 @@ export function EnvVarsSection({ envVars, onAddEnvVar, onDeleteEnvVar }: EnvVars
     })
   }
 
-  const handleCopyValue = (value: string) => {
-    navigator.clipboard.writeText(value)
-    toast.success('Value copied to clipboard')
+  const handleCopyValue = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      toast.success('Value copied to clipboard')
+    } catch (error) {
+      console.error('Failed to copy value:', error)
+      toast.error('Failed to copy value')
+    }
   }
 
   const maskValue = (value: string) => {

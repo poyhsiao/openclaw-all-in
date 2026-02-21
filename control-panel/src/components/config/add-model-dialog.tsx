@@ -35,7 +35,7 @@ const modelFormSchema = z.object({
 interface AddModelDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: ModelFormData) => void
+  onSubmit: (data: ModelFormData) => Promise<void>
   isSubmitting?: boolean
 }
 
@@ -52,9 +52,13 @@ export function AddModelDialog({ open, onOpenChange, onSubmit, isSubmitting }: A
     },
   })
 
-  const handleSubmit = (data: z.infer<typeof modelFormSchema>) => {
-    onSubmit(data)
-    form.reset()
+  const handleSubmit = async (data: z.infer<typeof modelFormSchema>) => {
+    try {
+      await onSubmit(data)
+      form.reset()
+    } catch (error) {
+      // Error is handled by parent, don't reset form
+    }
   }
 
   return (
@@ -129,7 +133,15 @@ export function AddModelDialog({ open, onOpenChange, onSubmit, isSubmitting }: A
                       max="2"
                       placeholder="0.7"
                       {...field}
-                      onChange={(e) => field.onChange(parseFloat(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value === '') {
+                          field.onChange(undefined)
+                        } else {
+                          const parsed = parseFloat(value)
+                          field.onChange(Number.isNaN(parsed) ? undefined : parsed)
+                        }
+                      }}
                     />
                   </FormControl>
                   <FormMessage />
@@ -149,7 +161,15 @@ export function AddModelDialog({ open, onOpenChange, onSubmit, isSubmitting }: A
                       max="128000"
                       placeholder="2048"
                       {...field}
-                      onChange={(e) => field.onChange(parseInt(e.target.value))}
+                      onChange={(e) => {
+                        const value = e.target.value
+                        if (value === '') {
+                          field.onChange(undefined)
+                        } else {
+                          const parsed = parseInt(value)
+                          field.onChange(Number.isNaN(parsed) ? undefined : parsed)
+                        }
+                      }}
                     />
                   </FormControl>
                   <FormMessage />

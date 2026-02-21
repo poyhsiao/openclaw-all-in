@@ -103,6 +103,7 @@ export function ModelsSection({ models, onAddModel, onDeleteModel, onSetDefault 
                         variant="ghost"
                         size="sm"
                         onClick={() => onSetDefault(model.id)}
+                        aria-label={`Set ${model.name} as default`}
                       >
                         <Star className="h-4 w-4" />
                       </Button>
@@ -114,6 +115,7 @@ export function ModelsSection({ models, onAddModel, onDeleteModel, onSetDefault 
                       size="sm"
                       onClick={() => onDeleteModel(model.id)}
                       disabled={model.isDefault}
+                      aria-label={`Delete ${model.name}`}
                     >
                       <Trash2 className="h-4 w-4 text-destructive" />
                     </Button>

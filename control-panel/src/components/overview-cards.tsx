@@ -54,7 +54,11 @@ export function OverviewCards({ stats, isLoading }: OverviewCardsProps) {
     {
       title: 'Active Users',
       value: stats.activeUsers.toString(),
-      description: `+${stats.newUsersToday} new today`,
+      description: (() => {
+        if (stats.newUsersToday > 0) return `+${stats.newUsersToday} new today`
+        if (stats.newUsersToday === 0) return 'No new users today'
+        return `${stats.newUsersToday} fewer today`
+      })(),
       icon: Users,
     },
     {

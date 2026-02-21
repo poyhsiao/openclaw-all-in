@@ -4,6 +4,7 @@ import { asyncErrorWrapper } from '@/middleware';
 import { authenticate, requireRole } from '@/middleware/auth';
 import { configService } from '@/services/configService';
 import { AuthenticatedRequest, UserRole } from '@/types';
+import { validateModelInput, validateEnvVarInput } from '@/utils/validation';
 
 class ConfigController extends BaseController {
   async listModels(_req: AuthenticatedRequest, res: Response): Promise<void> {
@@ -26,6 +27,13 @@ class ConfigController extends BaseController {
   }
 
   async createModel(req: AuthenticatedRequest, res: Response): Promise<void> {
+    // Validate required fields
+    const validation = validateModelInput(req.body, false);
+    if (!validation.valid) {
+      this.handleValidationError(res, validation.errors.join(', '));
+      return;
+    }
+
     const { name, provider, modelId, description, enabled } = req.body;
 
     const model = await configService.createModel({
@@ -42,7 +50,23 @@ class ConfigController extends BaseController {
   async updateModel(req: AuthenticatedRequest, res: Response): Promise<void> {
     const { id } = req.params;
     const modelId = Array.isArray(id) ? id[0] : id;
+
+    // Validate update input
+    const validation = validateModelInput(req.body, true);
+    if (!validation.valid) {
+      this.handleValidationError(res, validation.errors.join(', '));
+      return;
+    }
+
     const { name, provider, modelId: newModelId, description, enabled } = req.body;
+
+    // Build update payload only from provided fields
+    const updateData: any = {};
+    if (name !== undefined) updateData.name = name;
+    if (provider !== undefined) updateData.provider = provider;
+    if (newModelId !== undefined) updateData.modelId = newModelId;
+    if (description !== undefined) updateData.description = description;
+    if (enabled !== undefined) updateData.enabled = enabled;
 
     const existingModel = await configService.getModelById(modelId);
 
@@ -51,13 +75,7 @@ class ConfigController extends BaseController {
       return;
     }
 
-    const model = await configService.updateModel(modelId, {
-      name,
-      provider,
-      modelId: newModelId,
-      description,
-      enabled,
-    });
+    const model = await configService.updateModel(modelId, updateData);
 
     this.handleSuccess(res, { model });
   }
@@ -100,10 +118,38 @@ class ConfigController extends BaseController {
   async createApiKey(req: AuthenticatedRequest, res: Response): Promise<void> {
     const { userId, name, expiresAt } = req.body;
 
+    // Validate expiresAt
+    let parsedExpiresAt: Date | undefined;
+    if (expiresAt !== undefined) {
+      const timestamp = Date.parse(expiresAt);
+      if (isNaN(timestamp)) {
+        this.handleValidationError(res, 'Invalid expiresAt date format');
+        return;
+      }
+      parsedExpiresAt = new Date(expiresAt);
+    }
+
+    // Use authenticated user's ID if userId is not provided
+    // If userId is provided by request, ensure it's an admin or same user
+    let targetUserId: string;
+    if (userId !== undefined) {
+      if (req.user?.role !== UserRole.ADMIN && req.user?.userId !== userId) {
+        this.handleValidationError(res, 'Cannot create API key for another user');
+        return;
+      }
+      targetUserId = userId;
+    } else {
+      if (!req.user?.userId) {
+        this.handleError(new Error('User not authenticated'), res, 'createApiKey');
+        return;
+      }
+      targetUserId = req.user.userId;
+    }
+
     const apiKey = await configService.createApiKey({
-      userId,
+      userId: targetUserId,
       name,
-      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      expiresAt: parsedExpiresAt,
     });
 
     this.handleSuccess(res, { apiKey }, 201);
@@ -145,12 +191,24 @@ class ConfigController extends BaseController {
   }
 
   async createEnvVar(req: AuthenticatedRequest, res: Response): Promise<void> {
+    // Validate input
+    const validation = validateEnvVarInput(req.body);
+    if (!validation.valid) {
+      this.handleValidationError(res, validation.errors.join(', '));
+      return;
+    }
+
     const { key, value, isSecret } = req.body;
 
+    // Normalize inputs
+    const normalizedKey = key.trim();
+    const normalizedValue = value;
+    const normalizedIsSecret = isSecret !== undefined ? isSecret : false;
+
     const envVar = await configService.createEnvVar({
-      key,
-      value,
-      isSecret,
+      key: normalizedKey,
+      value: normalizedValue,
+      isSecret: normalizedIsSecret,
     });
 
     this.handleSuccess(res, { envVar }, 201);
