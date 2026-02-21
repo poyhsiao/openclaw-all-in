@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { hashPassword } from './src/utils/auth';
+import { hashPassword } from '../src/utils/auth';
 
 const prisma = new PrismaClient();
 
@@ -29,7 +29,7 @@ async function main() {
 
   console.log('Admin user created successfully:');
   console.log(`  Email: ${email}`);
-  console.log(`  Password: ${password}`);
+  console.log(`  Password: [REDACTED]`);
   console.log(`  ID: ${admin.id}`);
 }
 
