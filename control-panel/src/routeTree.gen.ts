@@ -14,6 +14,11 @@ import { Route as ServicesRouteImport } from './routes/services'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as ConfigRouteImport } from './routes/config'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentRouteImport } from './routes/agent'
+import { Route as AgentSessionsRouteImport } from './routes/agent.sessions'
+import { Route as ConfigModelsRouteImport } from './routes/config.models'
+import { Route as ConfigKeysRouteImport } from './routes/config.keys'
+import { Route as MonitorRouteImport } from './routes/monitor'
 
 const UsersRoute = UsersRouteImport.update({
   id: '/users',
@@ -40,17 +45,52 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentRoute = AgentRouteImport.update({
+  id: '/agent',
+  path: '/agent',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AgentSessionsRoute = AgentSessionsRouteImport.update({
+  id: '/agent/sessions',
+  path: '/agent/sessions',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigModelsRoute = ConfigModelsRouteImport.update({
+  id: '/config/models',
+  path: '/config/models',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfigKeysRoute = ConfigKeysRouteImport.update({
+  id: '/config/keys',
+  path: '/config/keys',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MonitorRoute = MonitorRouteImport.update({
+  id: '/monitor',
+  path: '/monitor',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
+  '/agent/sessions': typeof AgentSessionsRoute
+  '/config/models': typeof ConfigModelsRoute
+  '/config/keys': typeof ConfigKeysRoute
   '/config': typeof ConfigRoute
+  '/monitor': typeof MonitorRoute
   '/profile': typeof ProfileRoute
   '/services': typeof ServicesRoute
   '/users': typeof UsersRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
+  '/agent/sessions': typeof AgentSessionsRoute
+  '/config/models': typeof ConfigModelsRoute
+  '/config/keys': typeof ConfigKeysRoute
   '/config': typeof ConfigRoute
+  '/monitor': typeof MonitorRoute
   '/profile': typeof ProfileRoute
   '/services': typeof ServicesRoute
   '/users': typeof UsersRoute
@@ -58,22 +98,32 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agent': typeof AgentRoute
+  '/agent/sessions': typeof AgentSessionsRoute
+  '/config/models': typeof ConfigModelsRoute
+  '/config/keys': typeof ConfigKeysRoute
   '/config': typeof ConfigRoute
+  '/monitor': typeof MonitorRoute
   '/profile': typeof ProfileRoute
   '/services': typeof ServicesRoute
   '/users': typeof UsersRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/config' | '/profile' | '/services' | '/users'
+  fullPaths: '/' | '/agent' | '/agent/sessions' | '/config/models' | '/config/keys' | '/config' | '/monitor' | '/profile' | '/services' | '/users'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/config' | '/profile' | '/services' | '/users'
-  id: '__root__' | '/' | '/config' | '/profile' | '/services' | '/users'
+  to: '/' | '/agent' | '/agent/sessions' | '/config/models' | '/config/keys' | '/config' | '/monitor' | '/profile' | '/services' | '/users'
+  id: '__root__' | '/' | '/agent' | '/agent/sessions' | '/config/models' | '/config/keys' | '/config' | '/monitor' | '/profile' | '/services' | '/users'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentRoute: typeof AgentRoute
+  AgentSessionsRoute: typeof AgentSessionsRoute
+  ConfigModelsRoute: typeof ConfigModelsRoute
+  ConfigKeysRoute: typeof ConfigKeysRoute
   ConfigRoute: typeof ConfigRoute
+  MonitorRoute: typeof MonitorRoute
   ProfileRoute: typeof ProfileRoute
   ServicesRoute: typeof ServicesRoute
   UsersRoute: typeof UsersRoute
@@ -81,6 +131,34 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/agent': {
+      id: '/agent'
+      path: '/agent'
+      fullPath: '/agent'
+      preLoaderRoute: typeof AgentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/agent/sessions': {
+      id: '/agent/sessions'
+      path: '/agent/sessions'
+      fullPath: '/agent/sessions'
+      preLoaderRoute: typeof AgentSessionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/config/models': {
+      id: '/config/models'
+      path: '/config/models'
+      fullPath: '/config/models'
+      preLoaderRoute: typeof ConfigModelsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/config/keys': {
+      id: '/config/keys'
+      path: '/config/keys'
+      fullPath: '/config/keys'
+      preLoaderRoute: typeof ConfigKeysRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/users': {
       id: '/users'
       path: '/users'
@@ -116,12 +194,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/monitor': {
+      id: '/monitor'
+      path: '/monitor'
+      fullPath: '/monitor'
+      preLoaderRoute: typeof MonitorRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentRoute: AgentRoute,
+  AgentSessionsRoute: AgentSessionsRoute,
+  ConfigModelsRoute: ConfigModelsRoute,
+  ConfigKeysRoute: ConfigKeysRoute,
   ConfigRoute: ConfigRoute,
+  MonitorRoute: MonitorRoute,
   ProfileRoute: ProfileRoute,
   ServicesRoute: ServicesRoute,
   UsersRoute: UsersRoute,

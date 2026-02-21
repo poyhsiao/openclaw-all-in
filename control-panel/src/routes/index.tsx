@@ -45,6 +45,7 @@ export function Dashboard() {
   const handleRefresh = () => {
     refetchDashboard()
     refetchServices()
+    refetchActivities()
   }
 
   useEffect(() => {

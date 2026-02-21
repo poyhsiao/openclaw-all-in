@@ -98,6 +98,10 @@ export function Config() {
     }
   }
 
+  const handleAddEnvVar = () => {
+    toast.info('Environment variable management coming soon')
+  }
+
   return (
     <div className="p-6 space-y-6">
       <div>
@@ -135,7 +139,7 @@ export function Config() {
         <TabsContent value="env-vars" className="mt-6">
           <EnvVarsSection
             envVars={envVars || []}
-            onAddEnvVar={() => {}}
+            onAddEnvVar={handleAddEnvVar}
             onDeleteEnvVar={handleDeleteEnvVar}
           />
         </TabsContent>
