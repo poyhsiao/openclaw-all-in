@@ -44,11 +44,12 @@ async function fetchAPI<T>(
   options?: RequestInit
 ): Promise<T> {
   const url = `${API_BASE}${endpoint}`
+  const finalHeaders: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...options?.headers,
+  }
   const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...options?.headers,
-    },
+    headers: finalHeaders,
     ...options,
   })
 
@@ -84,7 +85,7 @@ export const serviceQueryOptions = (name: string) =>
 
 export const serviceLogsQueryOptions = (name: string, limit = 100) =>
   queryOptions({
-    queryKey: ['services', name, 'logs'],
+    queryKey: ['services', name, 'logs', limit],
     queryFn: async () => {
       return fetchAPI<ServiceLogs>(`/services/${name}/logs?limit=${limit}`)
     },
@@ -151,9 +152,13 @@ export function useServiceLogsStream(name: string, enabled = true) {
   const [logs, setLogs] = React.useState<LogEntry[]>([])
   const [isConnected, setIsConnected] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const MAX_LOGS = 500 // Limit log entries to prevent memory growth
 
   React.useEffect(() => {
     if (!enabled) return
+
+    // Clear logs when connecting to a new service
+    setLogs([])
 
     const eventSource = new EventSource(`${API_BASE}/services/${name}/logs/stream`)
 
@@ -163,8 +168,17 @@ export function useServiceLogsStream(name: string, enabled = true) {
     }
 
     eventSource.onmessage = (event) => {
-      const logEntry: LogEntry = JSON.parse(event.data)
-      setLogs((prev) => [...prev, logEntry])
+      try {
+        const logEntry: LogEntry = JSON.parse(event.data)
+        setLogs((prev) => {
+          const updated = [...prev, logEntry]
+          // Keep only the most recent MAX_LOGS entries
+          return updated.slice(-MAX_LOGS)
+        })
+      } catch (e) {
+        console.error('Failed to parse log message:', e)
+        // Silently ignore malformed messages to prevent crashes
+      }
     }
 
     eventSource.onerror = () => {

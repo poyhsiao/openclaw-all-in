@@ -80,7 +80,7 @@ export function ServiceCard({
                 </Button>
               </>
             )}
-            <Button variant="ghost" size="sm" onClick={onSettings}>
+            <Button variant="ghost" size="sm" onClick={onSettings} aria-label="Open settings">
               <Settings className="h-4 w-4" />
             </Button>
           </div>

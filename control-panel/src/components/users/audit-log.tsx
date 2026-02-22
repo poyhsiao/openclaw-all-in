@@ -60,31 +60,50 @@ export function AuditLogViewer({ logs, isLoading }: AuditLogProps) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {logs.map((log) => (
-            <TableRow key={log.id}>
-              <TableCell className="font-medium">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3 text-muted-foreground" />
-                  {new Date(log.timestamp).toLocaleString()}
-                </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
-                  <UserIcon className="h-4 w-4 text-muted-foreground" />
-                  <span>{log.userName}</span>
-                </div>
-              </TableCell>
-              <TableCell>
-                <Badge variant={getActionBadgeVariant(log.action)}>
-                  {log.action}
-                </Badge>
-              </TableCell>
-              <TableCell className="max-w-md truncate">{log.details}</TableCell>
-              <TableCell className="text-muted-foreground">
-                {log.ipAddress || '-'}
-              </TableCell>
-            </TableRow>
-          ))}
+          {logs.map((log) => {
+            const timestamp = log.timestamp ? new Date(log.timestamp) : null;
+            const isValidTimestamp = !isNaN(timestamp?.getTime() ?? NaN);
+            const formatter = new Intl.DateTimeFormat('en-US', {
+              year: 'numeric',
+              month: '2-digit',
+              day: '2-digit',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: false
+            });
+            
+            return (
+              <TableRow key={log.id}>
+                <TableCell className="font-medium">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3 w-3 text-muted-foreground" />
+                    {isValidTimestamp ? formatter.format(timestamp) : '—'}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <UserIcon className="h-4 w-4 text-muted-foreground" />
+                    <span>{log.userName}</span>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={getActionBadgeVariant(log.action)}>
+                    {log.action}
+                  </Badge>
+                </TableCell>
+                <TableCell 
+                  className="max-w-md truncate"
+                  title={log.details ?? ''}
+                >
+                  {log.details}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {log.ipAddress || '-'}
+                </TableCell>
+              </TableRow>
+            );
+          })}
         </TableBody>
       </Table>
     </div>

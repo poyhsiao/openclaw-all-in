@@ -32,7 +32,7 @@ const apiKeyFormSchema = z.object({
 interface AddApiKeyDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: ApiKeyFormData) => void
+  onSubmit: (data: ApiKeyFormData) => Promise<void>
   isSubmitting?: boolean
 }
 
@@ -46,9 +46,15 @@ export function AddApiKeyDialog({ open, onOpenChange, onSubmit, isSubmitting }: 
     },
   })
 
-  const handleSubmit = (data: z.infer<typeof apiKeyFormSchema>) => {
-    onSubmit(data)
-    form.reset()
+  const handleSubmit = async (data: z.infer<typeof apiKeyFormSchema>) => {
+    try {
+      await onSubmit(data)
+      form.reset()
+    } catch (error) {
+      // Log error and re-throw to allow upstream error handling
+      console.error('Error in handleSubmit:', error)
+      throw error // Re-throw so parent component can handle it
+    }
   }
 
   return (

@@ -65,4 +65,16 @@ export abstract class BaseController {
       },
     });
   }
+
+  /**
+   * Handle bad request error
+   */
+  protected handleBadRequest(res: Response, message: string): void {
+    res.status(400).json({
+      success: false,
+      error: {
+        message,
+      },
+    });
+  }
 }

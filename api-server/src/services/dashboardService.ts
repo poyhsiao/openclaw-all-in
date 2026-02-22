@@ -122,7 +122,9 @@ class DashboardService {
         uptime = this.parseUptime(container.Status);
       }
 
-      const restartCount = 0;
+      const inspect = await dockerService.getContainer(name);
+      const restartCount = inspect.RestartCount || 0;
+
       if (restartCount > 0 && container.Status) {
         const match = container.Status.match(/(\d+) (second|minute|hour|day)s? ago/);
         if (match) {
@@ -185,11 +187,14 @@ class DashboardService {
           container.Names[0]?.replace(/^\//, '') || container.Id.substring(0, 12)
         );
 
-        if (stats.cpu_stats && stats.precpu_stats) {
+        if (stats.cpu_stats && stats.precpu_stats && stats.cpu_stats.system_cpu_usage && stats.precpu_stats.system_cpu_usage) {
           const cpuDelta = stats.cpu_stats.cpu_usage.total_usage - stats.precpu_stats.cpu_usage.total_usage;
           const systemDelta = stats.cpu_stats.system_cpu_usage - stats.precpu_stats.system_cpu_usage;
-          const cpuPercent = (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100;
-          totalCpuUsage += Math.max(0, cpuPercent);
+
+          if (systemDelta > 0 && Number.isFinite(systemDelta) && Number.isFinite(cpuDelta)) {
+            const cpuPercent = (cpuDelta / systemDelta) * stats.cpu_stats.online_cpus * 100;
+            totalCpuUsage += Math.max(0, cpuPercent);
+          }
         }
 
         if (stats.memory_stats) {

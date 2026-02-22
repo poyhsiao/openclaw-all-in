@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { Activity, Database, Cpu, Server, RefreshCw } from 'lucide-react'
 import { useServiceMutation } from '@/services/api'
 import { toast } from 'sonner'
+import { useState } from 'react'
 
 interface QuickActionsProps {
   onRefresh?: () => void
@@ -11,22 +12,35 @@ interface QuickActionsProps {
 
 export function QuickActions({ onRefresh, isRefreshing }: QuickActionsProps) {
   const { mutate: mutateService, isPending } = useServiceMutation()
+  const [restartingAll, setRestartingAll] = useState(false)
 
-  const handleRestartAll = () => {
+  const handleRestartAll = async () => {
     const services = ['openclaw', 'searxng', 'ollama', 'qdrant', 'redis', 'portainer']
-    services.forEach((serviceId) => {
-      mutateService(
-        { serviceId, action: 'restart' },
-        {
-          onSuccess: () => {
-            toast.success(`${serviceId} restarted successfully`)
-          },
-          onError: (error) => {
-            toast.error(`Failed to restart ${serviceId}: ${error.message}`)
-          },
-        }
+    setRestartingAll(true)
+
+    try {
+      const promises = services.map((serviceId) =>
+        new Promise<void>((resolve, reject) => {
+          mutateService(
+            { serviceId, action: 'restart' },
+            {
+              onSuccess: () => {
+                toast.success(`${serviceId} restarted successfully`)
+                resolve()
+              },
+              onError: (error) => {
+                toast.error(`Failed to restart ${serviceId}: ${error.message}`)
+                resolve() // Resolve to continue with other services even if one fails
+              },
+            }
+          )
+        })
       )
-    })
+
+      await Promise.all(promises)
+    } finally {
+      setRestartingAll(false)
+    }
   }
 
   const handleViewLogs = () => {
@@ -88,7 +102,7 @@ export function QuickActions({ onRefresh, isRefreshing }: QuickActionsProps) {
               variant="outline"
               size="sm"
               onClick={onRefresh}
-              disabled={isRefreshing || isPending}
+              disabled={isRefreshing || restartingAll || isPending}
             >
               <RefreshCw className={`mr-2 h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
               Refresh
@@ -104,7 +118,7 @@ export function QuickActions({ onRefresh, isRefreshing }: QuickActionsProps) {
               variant={action.variant}
               className="flex items-center gap-2 h-auto py-4"
               onClick={action.onClick}
-              disabled={isRefreshing}
+              disabled={isRefreshing || (action.label === 'Restart All' && restartingAll)}
             >
               <action.icon className="h-5 w-5" />
               <span className="font-medium">{action.label}</span>

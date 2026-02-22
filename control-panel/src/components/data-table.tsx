@@ -31,6 +31,7 @@ export interface DataTableProps<T> {
     label: string
     value: string
   }[]
+  keyExtractor?: (row: T, index: number) => string
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -38,7 +39,13 @@ export function DataTable<T extends Record<string, any>>({
   columns,
   onRowAction,
   actions,
+  keyExtractor,
 }: DataTableProps<T>) {
+  const getRowKey = (row: T, index: number) => {
+    if (keyExtractor) return keyExtractor(row, index)
+    return (row.id as string | number) ?? `row-${index}`
+  }
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -64,12 +71,12 @@ export function DataTable<T extends Record<string, any>>({
             </TableRow>
           ) : (
             data.map((row, index) => (
-              <TableRow key={row.id || index}>
+              <TableRow key={getRowKey(row, index)}>
                 {columns.map((column) => (
                   <TableCell key={column.key as string}>
                     {column.render
                       ? column.render(row[column.key], row)
-                      : String(row[column.key])}
+                      : row[column.key] ?? ''}
                   </TableCell>
                 ))}
                 {actions && (

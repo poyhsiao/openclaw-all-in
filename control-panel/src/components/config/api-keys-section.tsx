@@ -36,9 +36,14 @@ export function ApiKeysSection({ apiKeys, onAddApiKey, onDeleteApiKey, onToggleA
     }
   }
 
-  const handleCopyKey = (key: string) => {
-    navigator.clipboard.writeText(key)
-    toast.success('API key copied to clipboard')
+  const handleCopyKey = async (key: string) => {
+    try {
+      await navigator.clipboard.writeText(key)
+      toast.success('API key copied to clipboard')
+    } catch (error) {
+      console.error('Failed to copy API key:', error)
+      toast.error('Failed to copy API key')
+    }
   }
 
   const maskKey = (key: string) => {

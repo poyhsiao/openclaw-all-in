@@ -16,7 +16,7 @@ export interface ApiKey {
   id: string
   name: string
   provider: 'openai' | 'anthropic' | 'google' | 'custom'
-  key: string
+  key?: string
   maskedKey: string
   isActive: boolean
   createdAt: string
@@ -26,7 +26,7 @@ export interface ApiKey {
 export interface EnvVar {
   id: string
   key: string
-  value: string
+  value?: string
   maskedValue: string
   isSensitive: boolean
   description?: string

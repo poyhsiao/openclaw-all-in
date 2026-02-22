@@ -12,12 +12,18 @@ interface ServicesGridProps {
 export function ServicesGrid({ services, isLoading }: ServicesGridProps) {
   const { mutate: mutateService } = useServiceMutation()
 
+  const pastTenseMap: Record<string, string> = {
+    start: 'started',
+    stop: 'stopped',
+    restart: 'restarted',
+  }
+
   const handleServiceAction = (serviceId: string, action: 'start' | 'stop' | 'restart') => {
     mutateService(
       { serviceId, action },
       {
         onSuccess: () => {
-          toast.success(`Service ${action}ed successfully`)
+          toast.success(`Service ${pastTenseMap[action]} successfully`)
         },
         onError: (error) => {
           toast.error(`Failed to ${action} service: ${error.message}`)

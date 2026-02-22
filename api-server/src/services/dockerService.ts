@@ -102,6 +102,9 @@ export class DockerService {
   async getContainerLogs(name: string, options: ContainerLogsOptions = {}): Promise<string> {
     try {
       const container = this.docker.getContainer(name);
+      const inspect = await container.inspect();
+      const isTty = inspect.Config.Tty ?? false;
+
       const logs = await container.logs({
         stdout: options.stdout ?? true,
         stderr: options.stderr ?? true,
@@ -109,7 +112,41 @@ export class DockerService {
         timestamps: options.timestamps ?? false,
         tail: options.tail ?? 100,
       });
-      return logs.toString('utf-8');
+
+      if (isTty) {
+        return logs.toString('utf-8');
+      }
+
+      // For non-TTY containers, manually parse the Docker multiplexed buffer format
+      // Format: [1-byte stream type, 3 padding bytes, 4-byte BE size, payload]
+      let result = '';
+      let offset = 0;
+      const logsBuffer = Buffer.isBuffer(logs) ? logs : Buffer.from(logs);
+
+      while (offset < logsBuffer.length) {
+        // Check if we have at least 8 bytes for the header
+        if (offset + 8 > logsBuffer.length) break;
+
+        // Read header
+        const streamType = logsBuffer[offset];
+        // Skip 3 padding bytes (offset + 1 to offset + 3)
+        const size = logsBuffer.readUInt32BE(offset + 4);
+
+        // Move to payload
+        offset += 8;
+
+        // Check if we have enough bytes for the payload
+        if (offset + size > logsBuffer.length) break;
+
+        // Extract payload
+        const payload = logsBuffer.subarray(offset, offset + size);
+        result += payload.toString('utf-8');
+
+        // Move to next frame
+        offset += size;
+      }
+
+      return result;
     } catch (error) {
       throw new Error(`Failed to get logs for container '${name}': ${error instanceof Error ? error.message : String(error)}`);
     }
@@ -137,8 +174,8 @@ export class DockerService {
       const inspect = await container.inspect();
       const state = inspect.State;
 
-      if (state.Running) return ServiceStatus.RUNNING;
       if (state.Paused) return ServiceStatus.PAUSED;
+      if (state.Running) return ServiceStatus.RUNNING;
       if (state.Restarting) return ServiceStatus.RESTARTING;
       if (state.Dead) return ServiceStatus.DEAD;
       if (state.Status === 'created') return ServiceStatus.CREATED;

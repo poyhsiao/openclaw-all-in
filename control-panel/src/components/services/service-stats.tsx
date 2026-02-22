@@ -49,7 +49,9 @@ export function ServiceStats({ stats, isLoading, onRefresh }: ServiceStatsProps)
   }
 
   const cpuPercentage = Math.round(stats.cpu * 100)
-  const memoryPercentage = Math.round((stats.memory / stats.memoryTotal) * 100)
+  const memoryPercentage = stats.memoryTotal > 0
+    ? Math.round((stats.memory / stats.memoryTotal) * 100)
+    : 0
   const memoryMB = Math.round(stats.memory)
   const memoryTotalMB = Math.round(stats.memoryTotal)
 
@@ -137,8 +139,19 @@ export function ServiceStats({ stats, isLoading, onRefresh }: ServiceStatsProps)
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 B'
+
+  const isNegative = bytes < 0
+  const absBytes = Math.abs(bytes)
+
   const k = 1024
-  const sizes = ['B', 'KB', 'MB', 'GB']
-  const i = Math.floor(Math.log(bytes) / Math.log(k))
-  return `${(bytes / Math.pow(k, i)).toFixed(2)} ${sizes[i]}`
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.min(
+    Math.max(0, Math.floor(Math.log(absBytes) / Math.log(k))),
+    sizes.length - 1
+  )
+
+  const result = (absBytes / Math.pow(k, i)).toFixed(2)
+  const unit = sizes[i]
+
+  return `${isNegative ? '-' : ''}${result} ${unit}`
 }

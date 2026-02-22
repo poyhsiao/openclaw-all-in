@@ -9,14 +9,24 @@ const server = app.listen(config.server.port, () => {
   console.log(`🔗 Health check: http://localhost:${config.server.port}/health`);
 });
 
+let isShuttingDown = false;
+let shutdownTimeout: NodeJS.Timeout;
+
 const gracefulShutdown = (signal: string) => {
+  if (isShuttingDown) {
+    console.log(`⚠️  ${signal} received, but shutdown already in progress`);
+    return;
+  }
+
+  isShuttingDown = true;
   console.log(`\n${signal} received. Starting graceful shutdown...`);
+
   server.close(() => {
     console.log('✅ Server closed successfully');
     process.exit(0);
   });
 
-  setTimeout(() => {
+  shutdownTimeout = setTimeout(() => {
     console.error('❌ Forced shutdown after timeout');
     process.exit(1);
   }, 10000);

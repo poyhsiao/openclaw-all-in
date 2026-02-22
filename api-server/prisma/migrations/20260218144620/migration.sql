@@ -31,6 +31,3 @@ CREATE INDEX "models_enabled_idx" ON "models"("enabled");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "env_vars_key_key" ON "env_vars"("key");
-
--- CreateIndex
-CREATE INDEX "env_vars_key_idx" ON "env_vars"("key");

@@ -1,16 +1,27 @@
 import { Router, Request, Response } from 'express';
 import { BaseController } from '@/controllers/BaseController';
-import { asyncErrorWrapper } from '@/middleware';
+import { asyncErrorWrapper, authenticate } from '@/middleware';
 import { prisma } from '@/lib/prisma';
 import { hashPassword, comparePassword, generateToken, generateRefreshToken, verifyRefreshToken } from '@/utils/auth';
 import { AuthenticatedRequest, LoginRequestBody, RegisterRequestBody, RefreshTokenRequestBody, UserRole } from '@/types';
+import { validateRegisterInput, validateLoginInput } from '@/utils/validation';
 
 class AuthController extends BaseController {
   async login(req: Request, res: Response): Promise<void> {
     const { email, password }: LoginRequestBody = req.body;
 
+    // Validate input before any database access
+    const validation = validateLoginInput(req.body);
+    if (!validation.valid) {
+      this.handleValidationError(res, validation.error || 'Invalid credentials');
+      return;
+    }
+
+    // Normalize email (trim and lowercase) to match registration behavior
+    const normalizedEmail = email!.trim().toLowerCase();
+
     const user = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (!user || !user.passwordHash) {
@@ -58,8 +69,18 @@ class AuthController extends BaseController {
   async register(req: Request, res: Response): Promise<void> {
     const { email, password, name }: RegisterRequestBody = req.body;
 
+    // Validate input
+    const validation = validateRegisterInput(req.body);
+    if (!validation.valid) {
+      this.handleValidationError(res, 'Validation failed', validation.errors);
+      return;
+    }
+
+    const normalizedEmail = email!.trim();
+    const normalizedName = name!.trim();
+
     const existingUser = await prisma.user.findUnique({
-      where: { email },
+      where: { email: normalizedEmail },
     });
 
     if (existingUser) {
@@ -67,13 +88,13 @@ class AuthController extends BaseController {
       return;
     }
 
-    const passwordHash = await hashPassword(password);
+    const passwordHash = await hashPassword(password!);
 
     const user = await prisma.user.create({
       data: {
-        email,
+        email: normalizedEmail,
         passwordHash,
-        name,
+        name: normalizedName,
         role: UserRole.USER,
       },
     });
@@ -111,13 +132,16 @@ class AuthController extends BaseController {
   async logout(req: AuthenticatedRequest, res: Response): Promise<void> {
     const { refreshToken }: RefreshTokenRequestBody = req.body;
 
-    if (!refreshToken) {
-      this.handleSuccess(res, { message: 'Logged out successfully' });
+    // Require and trim refresh token
+    if (!refreshToken || typeof refreshToken !== 'string' || refreshToken.trim() === '') {
+      this.handleValidationError(res, 'Refresh token is required');
       return;
     }
 
+    const token = refreshToken.trim();
+
     await prisma.session.deleteMany({
-      where: { token: refreshToken },
+      where: { token },
     });
 
     this.handleSuccess(res, { message: 'Logged out successfully' });
@@ -131,15 +155,18 @@ class AuthController extends BaseController {
       return;
     }
 
+    // Trim and validate token early for consistency with logout
+    const token = refreshToken.trim();
+
     try {
-      verifyRefreshToken(refreshToken);
+      verifyRefreshToken(token);
     } catch (error) {
       this.handleError(error, res, 'refresh');
       return;
     }
 
     const session = await prisma.session.findUnique({
-      where: { token: refreshToken },
+      where: { token },
       include: { user: true },
     });
 
@@ -211,6 +238,7 @@ router.post(
 
 router.get(
   '/me',
+  authenticate,
   asyncErrorWrapper((req, res) => authController.me(req, res))
 );
 
